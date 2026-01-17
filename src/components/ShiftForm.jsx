@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import { Form, Button, Card, Row, Col, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const ShiftForm = ({ onShiftCreated }) => {
+const ShiftForm = () => {
+    const { token, logout } = useAuth();
+    const navigate = useNavigate();
+
+    // REMOVED 'posted_by' from the initial state
     const [formData, setFormData] = useState({
         type: 'GIVE AWAY',
-        location: 'Epcot - Park Greeter',
+        location: '',
         shift_date: '',
         start_time: '',
         end_time: '',
-        posted_by: ''
     });
     const [status, setStatus] = useState({ type: '', msg: '' });
 
@@ -19,16 +24,23 @@ const ShiftForm = ({ onShiftCreated }) => {
         try {
             const response = await fetch(`${API_URL}/shifts/`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                // The backend will now ignore any 'posted_by' we send or add it itself
                 body: JSON.stringify(formData),
             });
 
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+
             if (response.ok) {
-                setStatus({ type: 'success', msg: 'Shift posted successfully!' });
-                onShiftCreated();
-                setFormData({ ...formData, shift_date: '', start_time: '', end_time: '' });
+                navigate('/');
             } else {
-                setStatus({ type: 'danger', msg: 'Failed to post shift' });
+                setStatus({ type: 'danger', msg: 'Failed to post shift.' });
             }
         } catch (error) {
             setStatus({ type: 'danger', msg: 'No connection to server' });
@@ -36,15 +48,15 @@ const ShiftForm = ({ onShiftCreated }) => {
     };
 
     return (
-        <Card className="shadow-sm border-0 mb-4">
-            <Card.Body>
-                <Card.Title className="fw-bold text-primary">Post a Shift</Card.Title>
-                <hr />
+        <Card className="shadow-sm border-0 mx-auto" style={{ maxWidth: '600px' }}>
+            <Card.Body className="p-4">
+                <Card.Title className="fw-bold text-primary mb-4">Post a New Shift</Card.Title>
                 {status.msg && <Alert variant={status.type}>{status.msg}</Alert>}
 
                 <Form onSubmit={handleSubmit}>
+                    {/* ACTION TYPE */}
                     <Form.Group className="mb-3">
-                        <Form.Label className="small fw-bold">Action</Form.Label>
+                        <Form.Label className="small fw-bold">SHIFT TYPE</Form.Label>
                         <Form.Select
                             value={formData.type}
                             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
@@ -55,27 +67,20 @@ const ShiftForm = ({ onShiftCreated }) => {
                         </Form.Select>
                     </Form.Group>
 
+                    {/* LOCATION */}
                     <Form.Group className="mb-3">
-                        <Form.Label className="small fw-bold">Posted By</Form.Label>
+                        <Form.Label className="small fw-bold">LOCATION</Form.Label>
                         <Form.Control
                             type="text" required
-                            placeholder="Your name (e.g., Simon)"
-                            value={formData.posted_by}
-                            onChange={(e) => setFormData({ ...formData, posted_by: e.target.value })}
-                        />
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                        <Form.Label className="small fw-bold">Location</Form.Label>
-                        <Form.Control
-                            type="text" required
+                            placeholder='Ex. Magic Kingdom ODV'
                             value={formData.location}
                             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                         />
                     </Form.Group>
 
+                    {/* DATE */}
                     <Form.Group className="mb-3">
-                        <Form.Label className="small fw-bold">Date</Form.Label>
+                        <Form.Label className="small fw-bold">DATE</Form.Label>
                         <Form.Control
                             type="date" required
                             value={formData.shift_date}
@@ -85,8 +90,8 @@ const ShiftForm = ({ onShiftCreated }) => {
 
                     <Row>
                         <Col>
-                            <Form.Group className="mb-3">
-                                <Form.Label className="small fw-bold">Starts</Form.Label>
+                            <Form.Group className="mb-4">
+                                <Form.Label className="small fw-bold">START</Form.Label>
                                 <Form.Control
                                     type="time" required
                                     value={formData.start_time}
@@ -95,8 +100,8 @@ const ShiftForm = ({ onShiftCreated }) => {
                             </Form.Group>
                         </Col>
                         <Col>
-                            <Form.Group className="mb-3">
-                                <Form.Label className="small fw-bold">Ends</Form.Label>
+                            <Form.Group className="mb-4">
+                                <Form.Label className="small fw-bold">END</Form.Label>
                                 <Form.Control
                                     type="time" required
                                     value={formData.end_time}
@@ -106,9 +111,14 @@ const ShiftForm = ({ onShiftCreated }) => {
                         </Col>
                     </Row>
 
-                    <Button variant="primary" type="submit" className="w-100 fw-bold">
-                        Post to App
-                    </Button>
+                    <div className="d-grid gap-2">
+                        <Button variant="primary" type="submit" size="lg" className="fw-bold">
+                            Post Shift
+                        </Button>
+                        <Button variant="light" onClick={() => navigate('/')}>
+                            Cancel
+                        </Button>
+                    </div>
                 </Form>
             </Card.Body>
         </Card>

@@ -1,36 +1,60 @@
-import { useState } from 'react';
-import { Container, Navbar, Nav } from 'react-bootstrap';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './AuthContext';
+import Login from './components/Login';
+import Signup from './Signup';
 import ShiftForm from './components/ShiftForm';
 import ShiftList from './components/ShiftList';
+import MyShifts from './components/MyShifts';
+import Navbar from './components/Navbar';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-function App() {
-  const [refresh, setRefresh] = useState(false);
+function PrivateRoute({ children }) {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/login" />;
+}
 
-  const triggerRefresh = () => setRefresh(!refresh);
+function MainApp() {
+  const { isAuthenticated } = useAuth();
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-      <Navbar bg="primary" variant="dark" expand="lg" className="mb-4 shadow">
-        <Container>
-          <Navbar.Brand href="#">Disney Shift Exchange</Navbar.Brand>
-          <Nav className="ms-auto">
-            <Nav.Link href="#home">Epcot - Park Greeters</Nav.Link>
-          </Nav>
-        </Container>
-      </Navbar>
+    <Router>
+      {isAuthenticated && <Navbar />}
+      <div className="container mt-4">
+        <Routes>
+          {/* Public Route */}
+          <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
+          <Route path="/signup" element={!isAuthenticated ? <Signup /> : <Navigate to="/" />} />
 
-      <Container>
-        <div className="row">
-          <div className="col-lg-4">
-            <ShiftForm onShiftCreated={triggerRefresh} />
-          </div>
-          <div className="col-lg-8">
-            <ShiftList refreshTrigger={refresh} />
-          </div>
-        </div>
-      </Container>
-    </div>
+          {/* Protected Routes */}
+          <Route path="/" element={
+            <PrivateRoute>
+              <ShiftList />
+            </PrivateRoute>
+          } />
+
+          <Route path="/post" element={
+            <PrivateRoute>
+              <ShiftForm />
+            </PrivateRoute>
+          } />
+
+          <Route path="/my-shifts" element={
+            <PrivateRoute>
+              <MyShifts />
+            </PrivateRoute>} />
+
+          {/* Redirect any unknown route to home */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  );
+}
